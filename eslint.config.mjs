@@ -11,6 +11,7 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
+  ...compat.extends("prettier"),
   {
     ignores: [
       "node_modules/**",
@@ -18,8 +19,13 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "public/**",
     ],
+    rules: {
+      "prettier/prettier": "error",
+    },
   },
+  ...compat.plugins("prettier"),
 ];
 
 export default eslintConfig;

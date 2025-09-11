@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+.next
+.vercel
+
+# Build outputs
+out
+dist
+build
+
+# Environment files
+.env*
+
+# Logs
+*.log
+
+# Package files
+package-lock.json
+yarn.lock
+
+# IDE files
+.vscode
+.idea
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Public assets
+public/ffmpeg/*
+*.wasm
+*.ttf
