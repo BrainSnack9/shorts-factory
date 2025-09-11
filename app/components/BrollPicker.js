@@ -83,7 +83,7 @@ export default function BrollPicker({ story, onPick }) {
   // 최초/쿼리 변경 시에만 검색
   useEffect(() => {
     if (items.length) load(false);
-  }, [signature]); // 선택만 바뀌면 signature가 그대로라 재검색 X
+  }, [signature, items.length, load]); // 의존성 배열에 필요한 값들 추가
 
   if (!story) return null;
 

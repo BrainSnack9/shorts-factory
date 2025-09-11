@@ -8,7 +8,7 @@ export default function StoryInfo({ result, onChange }) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <Typography variant="body1" color="text.secondary">
-          먼저 '프롬프트/생성'에서 스토리보드를 만들어주세요.
+          먼저 &apos;프롬프트/생성&apos;에서 스토리보드를 만들어주세요.
         </Typography>
       </Box>
     );
