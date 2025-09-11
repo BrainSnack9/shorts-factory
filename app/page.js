@@ -121,7 +121,13 @@ export default function Home() {
       case 1:
         return <StoryInfo result={result} onChange={handleStoryChange} />;
       case 2:
-        return <BrollManager result={result} onPick={handleBrollPick} />;
+        return (
+          <BrollManager
+            result={result}
+            onPick={handleBrollPick}
+            onStoryChange={handleStoryChange}
+          />
+        );
       case 3:
         return <AudioManager result={result} />;
       case 4:
@@ -199,41 +205,39 @@ export default function Home() {
               variant="scrollable"
               scrollButtons="auto"
               sx={{
-                height: "80px",
+                minHeight: "64px",
+                "& .MuiTab-root": {
+                  minHeight: "64px",
+                  height: "64px",
+                  padding: "12px 16px",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                },
+                "& .MuiTab-root .MuiTab-iconWrapper": {
+                  marginRight: "8px",
+                },
               }}
             >
               <Tab
                 label="① 프롬프트/생성"
                 icon={<SmartToy />}
                 iconPosition="start"
-                sx={{
-                  paddingBottom: "10px",
-                }}
               />
               <Tab label="② 씬 편집" icon={<Settings />} iconPosition="start" />
               <Tab
                 label="③ B-roll 선택"
                 icon={<VideoFile />}
                 iconPosition="start"
-                sx={{
-                  paddingBottom: "10px",
-                }}
               />
               <Tab
                 label="④ 오디오(TTS)"
                 icon={<AudioFile />}
                 iconPosition="start"
-                sx={{
-                  paddingBottom: "10px",
-                }}
               />
               <Tab
                 label="⑤ 합성/다운로드"
                 icon={<Download />}
                 iconPosition="start"
-                sx={{
-                  paddingBottom: "10px",
-                }}
               />
             </MuiTabs>
 

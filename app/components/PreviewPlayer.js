@@ -1,31 +1,19 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Box, Typography, Button, LinearProgress, Paper } from "@mui/material";
-import { PlayArrow, Pause, Replay } from "@mui/icons-material";
+import { useMemo, useState } from "react";
+import { Box, Typography, Button, Paper, Chip } from "@mui/material";
+import { wrapText } from "../lib/finalize";
 
 export default function PreviewPlayer({ story }) {
-  const [playing, setPlaying] = useState(false);
   const [sceneIndex, setSceneIndex] = useState(0);
-  const timerRef = useRef(null);
   const scenes = useMemo(
     () => (Array.isArray(story?.scenes) ? story.scenes : []),
     [story]
   );
 
-  useEffect(() => {
-    if (!playing || scenes.length === 0) return;
-    const dur = (scenes[sceneIndex]?.durationSec || 3) * 1000;
-    timerRef.current = setTimeout(() => {
-      if (sceneIndex < scenes.length - 1) setSceneIndex((i) => i + 1);
-      else setPlaying(false);
-    }, dur);
-    return () => clearTimeout(timerRef.current);
-  }, [playing, sceneIndex, scenes]);
-
   const current = scenes[sceneIndex] || {};
 
-  const progress =
-    scenes.length > 0 ? ((sceneIndex + 1) / scenes.length) * 100 : 0;
+  // 텍스트 줄바꿈 처리
+  const displayText = wrapText(current.onScreenText || current.voiceover || "");
 
   return (
     <Box sx={{ width: "100%", maxWidth: 400 }}>
@@ -41,24 +29,40 @@ export default function PreviewPlayer({ story }) {
           color: current.textColor || "#ffffff",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
           alignItems: "center",
           p: 3,
           position: "relative",
+          justifyContent: "flex-start", // 기본값을 flex-start로 변경
         }}
       >
-        <Typography
-          variant="h5"
+        <Box
           sx={{
-            fontWeight: 800,
-            lineHeight: 1.1,
-            textAlign: "center",
-            whiteSpace: "pre-wrap",
-            color: current.textColor || "#ffffff",
+            position: "absolute",
+            top: `${current.textPosition || 50}%`,
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "90%",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          {current.onScreenText || current.voiceover || ""}
-        </Typography>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 800,
+              lineHeight: 1.1,
+              textAlign: "center",
+              whiteSpace: "pre-wrap",
+              color: current.textColor || "#ffffff",
+              fontSize: `${(current.fontSize || 36) * 0.8}px`, // 프리뷰에서는 80% 크기로 표시
+              maxWidth: "100%", // 부모 컨테이너의 90% 너비 사용
+              wordBreak: "keep-all", // 한국어 단어 단위로 줄바꿈
+            }}
+          >
+            {displayText}
+          </Typography>
+        </Box>
 
         <Typography
           variant="caption"
@@ -74,37 +78,68 @@ export default function PreviewPlayer({ story }) {
       </Paper>
 
       <Box sx={{ mt: 2 }}>
-        <LinearProgress
-          variant="determinate"
-          value={progress}
-          sx={{ mb: 2, borderRadius: 1 }}
-        />
-
-        <Box sx={{ display: "flex", gap: 1, justifyContent: "center", mb: 1 }}>
-          <Button
-            variant="contained"
-            startIcon={<Replay />}
-            onClick={() => {
-              setSceneIndex(0);
-              setPlaying(true);
-            }}
-            size="small"
-          >
-            재생
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={playing ? <Pause /> : <PlayArrow />}
-            onClick={() => setPlaying(!playing)}
-            size="small"
-          >
-            {playing ? "일시정지" : "계속"}
-          </Button>
-        </Box>
-
-        <Typography variant="body2" textAlign="center" color="text.secondary">
+        <Typography
+          variant="body2"
+          textAlign="center"
+          color="text.secondary"
+          sx={{ mb: 2 }}
+        >
           씬 {sceneIndex + 1} / {scenes.length || 0}
         </Typography>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          {scenes.map((scene, index) => (
+            <Button
+              key={index}
+              variant={sceneIndex === index ? "contained" : "outlined"}
+              onClick={() => setSceneIndex(index)}
+              size="small"
+              sx={{
+                minWidth: "auto",
+                px: 1.5,
+                fontSize: "0.75rem",
+              }}
+            >
+              씬 #{index + 1}
+            </Button>
+          ))}
+        </Box>
+
+        {current && (
+          <Box sx={{ mt: 2, textAlign: "center" }}>
+            <Chip
+              label={`${(current.durationSec || 3).toFixed(1)}초`}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+            {current.fontSize && (
+              <Chip
+                label={`${current.fontSize}px`}
+                size="small"
+                color="secondary"
+                variant="outlined"
+                sx={{ ml: 1 }}
+              />
+            )}
+            {current.textPosition && (
+              <Chip
+                label={`위치 ${current.textPosition}%`}
+                size="small"
+                color="info"
+                variant="outlined"
+                sx={{ ml: 1 }}
+              />
+            )}
+          </Box>
+        )}
       </Box>
     </Box>
   );

@@ -168,7 +168,7 @@ export default function StoryboardEditor({ story, onChange }) {
                 <Edit fontSize="small" />
                 <Typography variant="h6">씬 #{i + 1}</Typography>
                 <Chip
-                  label={`${s.durationSec || 3}초`}
+                  label={`${(s.durationSec || 3).toFixed(1)}초`}
                   size="small"
                   color="primary"
                   variant="outlined"
@@ -240,6 +240,72 @@ export default function StoryboardEditor({ story, onChange }) {
                 onChange={(e) => updateScene(i, { textColor: e.target.value })}
                 variant="outlined"
               />
+            </Box>
+
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                gap: 2,
+              }}
+            >
+              <FormControl fullWidth>
+                <InputLabel shrink>글자 크기</InputLabel>
+                <Box sx={{ px: 1, pt: 3 }}>
+                  <Slider
+                    value={s.fontSize || 36}
+                    onChange={(e, value) => updateScene(i, { fontSize: value })}
+                    min={20}
+                    max={80}
+                    step={2}
+                    marks={[
+                      { value: 20, label: "20" },
+                      { value: 36, label: "36" },
+                      { value: 48, label: "48" },
+                      { value: 60, label: "60" },
+                      { value: 80, label: "80" },
+                    ]}
+                    valueLabelDisplay="on"
+                    valueLabelFormat={(value) => `${value}px`}
+                  />
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 1, display: "block" }}
+                  >
+                    자막 글자 크기 (기본: 36px)
+                  </Typography>
+                </Box>
+              </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel shrink>세로 위치</InputLabel>
+                <Box sx={{ px: 1, pt: 3 }}>
+                  <Slider
+                    value={s.textPosition || 50}
+                    onChange={(e, value) =>
+                      updateScene(i, { textPosition: value })
+                    }
+                    min={10}
+                    max={90}
+                    step={5}
+                    marks={[
+                      { value: 10, label: "위" },
+                      { value: 50, label: "중앙" },
+                      { value: 90, label: "아래" },
+                    ]}
+                    valueLabelDisplay="on"
+                    valueLabelFormat={(value) => `${value}%`}
+                  />
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ mt: 1, display: "block" }}
+                  >
+                    자막 세로 위치 (기본: 50% - 중앙)
+                  </Typography>
+                </Box>
+              </FormControl>
 
               <FormControl fullWidth>
                 <InputLabel shrink>길이(초)</InputLabel>

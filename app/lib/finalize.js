@@ -28,6 +28,27 @@ export function calculateDurationFromText(text) {
   return Math.round(calculatedDuration * 10) / 10; // 소수점 첫째자리까지
 }
 
+// 긴 텍스트를 자동으로 줄바꿈 처리하는 함수 (프리뷰와 합성에서 공통 사용)
+export function wrapText(text, maxLength = 25) {
+  if (!text || text.length <= maxLength) return text;
+
+  const words = text.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    if ((currentLine + word).length <= maxLength) {
+      currentLine += (currentLine ? " " : "") + word;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  return lines.join("\n");
+}
+
 /** 이름 있는 export (중요) */
 export async function buildFinalMP4(story, audioList) {
   try {
@@ -123,10 +144,19 @@ export async function buildFinalMP4(story, audioList) {
       // 간단한 스케일링만 사용 (aspect ratio 유지 없이)
       const scaleCrop = `scale=${OUT_W}:${OUT_H}`;
       // 텍스트가 비어있으면 drawtext 필터 사용하지 않음
+      const fontSize = s.fontSize || 36; // 씬별 폰트 크기 설정 가능
+
+      // 긴 텍스트를 자동으로 줄바꿈 처리
+      const wrappedText = wrapText(safeText).replace(/\n/g, "\\n");
+
+      // 세로 위치 계산 (10% = 위쪽, 50% = 중앙, 90% = 아래쪽)
+      const textPosition = s.textPosition || 50;
+      const yPosition = `(h*${textPosition}/100-text_h/2)`;
+
       const drawtext = safeText
         ? `drawtext=fontfile=NotoSansKR-Bold.ttf:` +
-          `text='${safeText}':fontcolor=${s.textColor || "#ffffff"}:` +
-          `fontsize=36:x=(w-text_w)/2:y=(h-text_h)/2:` +
+          `text='${wrappedText}':fontcolor=${s.textColor || "#ffffff"}:` +
+          `fontsize=${fontSize}:x=(w-text_w)/2:y=${yPosition}:` +
           `box=1:boxcolor=0x00000077:boxborderw=24:line_spacing=10`
         : null;
 

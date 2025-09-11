@@ -90,7 +90,7 @@ export default function PromptGenerator({
           <TextField
             fullWidth
             multiline
-            rows={12}
+            rows={10}
             value={variablePrompt}
             onChange={(e) => setVariablePrompt(e.target.value)}
             placeholder="예) 카페인이 피로를 '없애는' 게 아니라 '속인다'로 시작, 씬 4개"

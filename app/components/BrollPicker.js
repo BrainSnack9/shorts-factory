@@ -10,12 +10,26 @@ import {
   CircularProgress,
   Alert,
   Grid2,
+  TextField,
+  IconButton,
+  Collapse,
 } from "@mui/material";
-import { Refresh, VideoLibrary, CheckCircle } from "@mui/icons-material";
+import {
+  Refresh,
+  VideoLibrary,
+  CheckCircle,
+  RefreshOutlined,
+  Edit,
+  Save,
+  Cancel,
+} from "@mui/icons-material";
 
-export default function BrollPicker({ story, onPick }) {
+export default function BrollPicker({ story, onPick, onStoryChange }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [refreshingScenes, setRefreshingScenes] = useState(new Set());
+  const [editingPrompts, setEditingPrompts] = useState(new Set());
+  const [tempPrompts, setTempPrompts] = useState({});
   // 쿼리 결과 캐시: key = query 문자열, val = [{id,url,width,height,duration}]
   const cacheRef = useRef(new Map());
 
@@ -38,6 +52,122 @@ export default function BrollPicker({ story, onPick }) {
     () => items.map((it) => `${it.id}:${it.query}`).join("|"),
     [items]
   );
+
+  // B-roll 프롬프트 수정 함수들
+  const startEditPrompt = (sceneId) => {
+    const scene = story.scenes?.find(
+      (s) => (s.id || `s${story.scenes.indexOf(s) + 1}`) === sceneId
+    );
+    if (scene) {
+      setEditingPrompts((prev) => new Set(prev).add(sceneId));
+      setTempPrompts((prev) => ({
+        ...prev,
+        [sceneId]: scene.brollPrompt || "",
+      }));
+    }
+  };
+
+  const savePrompt = (sceneId) => {
+    const newPrompt = tempPrompts[sceneId] || "";
+
+    // 스토리 업데이트
+    if (onStoryChange) {
+      const updatedStory = {
+        ...story,
+        scenes: story.scenes.map((s, i) => {
+          const currentId = s.id || `s${i + 1}`;
+          if (currentId === sceneId) {
+            return { ...s, brollPrompt: newPrompt };
+          }
+          return s;
+        }),
+      };
+      onStoryChange(updatedStory);
+    }
+
+    // 편집 상태 해제
+    setEditingPrompts((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(sceneId);
+      return newSet;
+    });
+    setTempPrompts((prev) => {
+      const newTemp = { ...prev };
+      delete newTemp[sceneId];
+      return newTemp;
+    });
+
+    // 프롬프트가 변경되었으면 해당 씬의 B-roll 새로고침
+    if (
+      newPrompt !==
+      (story.scenes?.find(
+        (s) => (s.id || `s${story.scenes.indexOf(s) + 1}`) === sceneId
+      )?.brollPrompt || "")
+    ) {
+      setTimeout(() => refreshScene(sceneId), 100);
+    }
+  };
+
+  const cancelEditPrompt = (sceneId) => {
+    setEditingPrompts((prev) => {
+      const newSet = new Set(prev);
+      newSet.delete(sceneId);
+      return newSet;
+    });
+    setTempPrompts((prev) => {
+      const newTemp = { ...prev };
+      delete newTemp[sceneId];
+      return newTemp;
+    });
+  };
+
+  // 개별 씬의 B-roll 새로고침 함수
+  async function refreshScene(sceneId) {
+    const scene = items.find((item) => item.id === sceneId);
+    if (!scene) return;
+
+    // 해당 씬만 로딩 상태로 설정
+    setRefreshingScenes((prev) => new Set(prev).add(sceneId));
+
+    try {
+      // 해당 쿼리의 캐시를 삭제
+      cacheRef.current.delete(scene.query);
+
+      // 해당 쿼리만 다시 요청
+      const res = await fetch("/api/broll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: scene.query }),
+      });
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+
+      // 캐시에 저장
+      cacheRef.current.set(scene.query, json.videos || []);
+
+      // 데이터 상태 업데이트
+      setData((prev) => ({
+        ...prev,
+        [sceneId]: json.videos || [],
+      }));
+
+      console.log(
+        `[BrollPicker] 씬 ${sceneId} B-roll 새로고침 완료:`,
+        json.videos?.length || 0,
+        "개 영상"
+      );
+    } catch (e) {
+      console.error("[BrollPicker] 개별 씬 새로고침 실패:", e);
+    } finally {
+      // 해당 씬의 로딩 상태 해제
+      setRefreshingScenes((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(sceneId);
+        return newSet;
+      });
+    }
+  }
 
   async function load(force = false) {
     setLoading(true);
@@ -133,15 +263,115 @@ export default function BrollPicker({ story, onPick }) {
                 }}
               >
                 <Typography variant="h6">씬 #{idx + 1}</Typography>
-                {selected ? (
-                  <Chip
-                    label="선택됨"
-                    icon={<CheckCircle />}
-                    color="success"
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                  <Button
+                    variant="outlined"
                     size="small"
-                  />
+                    startIcon={
+                      refreshingScenes.has(row.id) ? (
+                        <CircularProgress size={16} />
+                      ) : (
+                        <RefreshOutlined />
+                      )
+                    }
+                    onClick={() => refreshScene(row.id)}
+                    disabled={loading || refreshingScenes.has(row.id)}
+                    sx={{ fontSize: "0.75rem", minWidth: "auto", px: 1 }}
+                  >
+                    새로고침
+                  </Button>
+                  {selected ? (
+                    <Chip
+                      label="선택됨"
+                      icon={<CheckCircle />}
+                      color="success"
+                      size="small"
+                    />
+                  ) : (
+                    <Chip label="미선택" color="default" size="small" />
+                  )}
+                </Box>
+              </Box>
+
+              {/* B-roll 프롬프트 표시 및 수정 */}
+              <Box sx={{ mb: 2 }}>
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    B-roll 프롬프트:
+                  </Typography>
+                  {!editingPrompts.has(row.id) && (
+                    <IconButton
+                      size="small"
+                      onClick={() => startEditPrompt(row.id)}
+                      sx={{ p: 0.5 }}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                  )}
+                </Box>
+
+                {editingPrompts.has(row.id) ? (
+                  <Box
+                    sx={{ display: "flex", gap: 1, alignItems: "flex-start" }}
+                  >
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={tempPrompts[row.id] || ""}
+                      onChange={(e) =>
+                        setTempPrompts((prev) => ({
+                          ...prev,
+                          [row.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="영어 키워드로 B-roll 검색어 입력"
+                      variant="outlined"
+                      multiline
+                      rows={2}
+                    />
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                      }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => savePrompt(row.id)}
+                        color="primary"
+                        sx={{ p: 0.5 }}
+                      >
+                        <Save fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => cancelEditPrompt(row.id)}
+                        color="inherit"
+                        sx={{ p: 0.5 }}
+                      >
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
                 ) : (
-                  <Chip label="미선택" color="default" size="small" />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      p: 1,
+                      bgcolor: "action.hover",
+                      borderRadius: 1,
+                      fontStyle: "italic",
+                      color: "text.secondary",
+                    }}
+                  >
+                    {story.scenes?.find(
+                      (s) =>
+                        (s.id || `s${story.scenes.indexOf(s) + 1}`) === row.id
+                    )?.brollPrompt || "프롬프트 없음"}
+                  </Typography>
                 )}
               </Box>
 

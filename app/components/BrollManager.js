@@ -3,7 +3,7 @@
 import { Box, Typography } from "@mui/material";
 import BrollPicker from "./BrollPicker";
 
-export default function BrollManager({ result, onPick }) {
+export default function BrollManager({ result, onPick, onStoryChange }) {
   if (!result) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
@@ -16,7 +16,11 @@ export default function BrollManager({ result, onPick }) {
 
   return (
     <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
-      <BrollPicker story={result} onPick={onPick} />
+      <BrollPicker
+        story={result}
+        onPick={onPick}
+        onStoryChange={onStoryChange}
+      />
     </Box>
   );
 }
