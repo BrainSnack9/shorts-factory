@@ -3,9 +3,11 @@
 import { getFFmpeg, writeFile, fetchAsBlob } from "./ff";
 import { base64ToBlob } from "./tts";
 
-const OUT_W = 480; // 메모리 문제 방지를 위해 해상도 감소
-const OUT_H = 854; // 16:9 비율 대신 더 작은 해상도 사용
-const FPS = 24; // FPS도 낮춰서 메모리 사용량 감소
+// SharedArrayBuffer 지원 여부에 따른 동적 설정
+const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
+const OUT_W = hasSharedArrayBuffer ? 720 : 480; // SharedArrayBuffer 지원 시 고해상도
+const OUT_H = hasSharedArrayBuffer ? 1280 : 854; // SharedArrayBuffer 지원 시 고해상도
+const FPS = hasSharedArrayBuffer ? 30 : 24; // SharedArrayBuffer 지원 시 고프레임률
 const FONT_PUBLIC_PATH = "/NotoSansKR-Bold.ttf";
 
 // 텍스트 길이에 따른 duration 계산 함수
@@ -127,7 +129,11 @@ export async function buildFinalMP4(story, audioList) {
       let videoInName = null;
       if (s.broll?.url) {
         try {
-          const vblob = await fetchAsBlob(s.broll.url);
+          // 외부 URL인 경우 프록시를 통해 접근
+          const videoUrl = s.broll.url.startsWith("http")
+            ? `/api/proxy-video?url=${encodeURIComponent(s.broll.url)}`
+            : s.broll.url;
+          const vblob = await fetchAsBlob(videoUrl);
           videoInName = `in_${id}.mp4`;
           await writeFile(ff, videoInName, vblob);
         } catch (e) {
@@ -213,9 +219,11 @@ export async function buildFinalMP4(story, audioList) {
             "-c:v",
             "libx264",
             "-preset",
-            "ultrafast", // 빠른 인코딩으로 메모리 사용량 감소
+            hasSharedArrayBuffer ? "medium" : "ultrafast", // SharedArrayBuffer 지원 시 고품질
             "-crf",
-            "28", // 품질 낮춤으로 메모리 절약
+            hasSharedArrayBuffer ? "23" : "28", // SharedArrayBuffer 지원 시 고품질
+            "-threads",
+            hasSharedArrayBuffer ? "4" : "1", // SharedArrayBuffer 지원 시 멀티스레드
             "-pix_fmt",
             "yuv420p",
             "-y",

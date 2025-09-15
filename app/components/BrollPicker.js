@@ -551,7 +551,11 @@ export default function BrollPicker({ story, onPick, onStoryChange }) {
                     />
                   ) : (
                     <video
-                      src={selected.url}
+                      src={
+                        selected.url.startsWith("http")
+                          ? `/api/proxy-video?url=${encodeURIComponent(selected.url)}`
+                          : selected.url
+                      }
                       style={{
                         width: 160,
                         height: 90,
@@ -609,7 +613,11 @@ export default function BrollPicker({ story, onPick, onStoryChange }) {
                       }}
                     >
                       <video
-                        src={r.url}
+                        src={
+                          r.url.startsWith("http")
+                            ? `/api/proxy-video?url=${encodeURIComponent(r.url)}`
+                            : r.url
+                        }
                         style={{
                           width: "100%",
                           height: 250,

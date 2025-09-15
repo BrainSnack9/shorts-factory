@@ -33,7 +33,25 @@ export async function getFFmpeg() {
 
   if (!ffmpeg) {
     try {
-      ffmpeg = new FFmpegClass();
+      // SharedArrayBuffer 지원 여부 확인
+      const hasSharedArrayBuffer = typeof SharedArrayBuffer !== "undefined";
+      console.log("[ff] SharedArrayBuffer 지원:", hasSharedArrayBuffer);
+
+      const config = hasSharedArrayBuffer
+        ? {
+            // SharedArrayBuffer가 있을 때: 고메모리 설정
+            wasmOptions: {
+              memory: 1024 * 1024 * 1024, // 1GB 메모리 할당
+            },
+          }
+        : {
+            // SharedArrayBuffer가 없을 때: 기본 설정
+            wasmOptions: {
+              memory: 256 * 1024 * 1024, // 256MB 메모리 할당
+            },
+          };
+
+      ffmpeg = new FFmpegClass(config);
     } catch (e) {
       console.error("[ff] FFmpeg 인스턴스 생성 실패:", e);
       throw e;
