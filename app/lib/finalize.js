@@ -187,7 +187,7 @@ export async function buildFinalMP4(story, audioList) {
 
       const drawtext = safeText
         ? `drawtext=fontfile=NotoSansKR-Bold.ttf:` +
-          `text='${wrappedText.replace(/'/g, "\\'").replace(/\n/g, "\\n")}':fontcolor=${s.textColor || "#ffffff"}:` +
+          `text='${wrappedText.replace(/'/g, "\\'")}':fontcolor=${s.textColor || "#ffffff"}:` +
           `fontsize=${fontSize}:x=(w-text_w)/2:y=${yPosition}:` +
           `box=1:boxcolor=${boxColor}:boxborderw=24:line_spacing=10`
         : null;
