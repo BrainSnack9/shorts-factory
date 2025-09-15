@@ -37,7 +37,10 @@ export function wrapText(text, maxLength = 25) {
   // HTML 태그를 임시로 보존하면서 텍스트 길이 계산
   const tempText = text.replace(/<br\s*\/?>/gi, "\n").replace(/<br>/gi, "\n");
 
-  if (tempText.length <= maxLength) return text;
+  if (tempText.length <= maxLength) {
+    // 개행이 있는 경우 FFmpeg 형식으로 변환
+    return tempText.replace(/\n/g, "\\n");
+  }
 
   const words = tempText.split(" ");
   const lines = [];
@@ -53,7 +56,8 @@ export function wrapText(text, maxLength = 25) {
   }
   if (currentLine) lines.push(currentLine);
 
-  return lines.join("\n");
+  // FFmpeg 형식으로 줄바꿈 변환
+  return lines.join("\\n");
 }
 
 /** 이름 있는 export (중요) */
@@ -118,12 +122,11 @@ export async function buildFinalMP4(story, audioList) {
         isEmpty: !raw,
       });
       const safeText = raw
-        .replace(/<br\s*\/?>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
-        .replace(/<br>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
+        .replace(/<br\s*\/?>/gi, "\\n") // <br> 태그를 FFmpeg 줄바꿈으로 변환
+        .replace(/<br>/gi, "\\n") // <br> 태그를 FFmpeg 줄바꿈으로 변환
         .replace(/<[^>]*>/g, "") // 모든 HTML 태그 제거
         .replace(/\\/g, "\\\\")
-        .replace(/:/g, "\\:")
-        .replace(/'/g, "\\'");
+        .replace(/:/g, "\\:");
 
       // 비디오 입력
       let videoInName = null;
@@ -160,8 +163,8 @@ export async function buildFinalMP4(story, audioList) {
       // 텍스트가 비어있으면 drawtext 필터 사용하지 않음
       const fontSize = s.fontSize || 36; // 씬별 폰트 크기 설정 가능
 
-      // 긴 텍스트를 자동으로 줄바꿈 처리
-      const wrappedText = wrapText(safeText).replace(/\n/g, "\\n");
+      // 긴 텍스트를 자동으로 줄바꿈 처리 (원본 텍스트 사용)
+      const wrappedText = wrapText(raw);
 
       // 세로 위치 계산 (10% = 위쪽, 50% = 중앙, 90% = 아래쪽)
       const textPosition = s.textPosition || 50;
@@ -184,7 +187,7 @@ export async function buildFinalMP4(story, audioList) {
 
       const drawtext = safeText
         ? `drawtext=fontfile=NotoSansKR-Bold.ttf:` +
-          `text='${wrappedText}':fontcolor=${s.textColor || "#ffffff"}:` +
+          `text='${wrappedText.replace(/'/g, "\\'").replace(/\n/g, "\\n")}':fontcolor=${s.textColor || "#ffffff"}:` +
           `fontsize=${fontSize}:x=(w-text_w)/2:y=${yPosition}:` +
           `box=1:boxcolor=${boxColor}:boxborderw=24:line_spacing=10`
         : null;
