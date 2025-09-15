@@ -9,6 +9,7 @@ const OUT_W = hasSharedArrayBuffer ? 720 : 480; // SharedArrayBuffer 지원 시 
 const OUT_H = hasSharedArrayBuffer ? 1280 : 854; // SharedArrayBuffer 지원 시 고해상도
 const FPS = hasSharedArrayBuffer ? 30 : 24; // SharedArrayBuffer 지원 시 고프레임률
 const FONT_PUBLIC_PATH = "/NotoSansKR-Bold.ttf";
+const EMOJI_FONT_PUBLIC_PATH = "/NotoColorEmoji-Regular.ttf";
 
 // 텍스트 길이에 따른 duration 계산 함수
 export function calculateDurationFromText(text) {
@@ -38,8 +39,7 @@ export function wrapText(text, maxLength = 25) {
   const tempText = text.replace(/<br\s*\/?>/gi, "\n").replace(/<br>/gi, "\n");
 
   if (tempText.length <= maxLength) {
-    // 개행이 있는 경우 FFmpeg 형식으로 변환
-    return tempText.replace(/\n/g, "\\n");
+    return tempText; // 프리뷰에서는 \n을 그대로 반환
   }
 
   const words = tempText.split(" ");
@@ -56,8 +56,35 @@ export function wrapText(text, maxLength = 25) {
   }
   if (currentLine) lines.push(currentLine);
 
-  // FFmpeg 형식으로 줄바꿈 변환
-  return lines.join("\\n");
+  return lines.join("\n"); // 프리뷰에서는 \n을 그대로 반환
+}
+
+// 영상 합성용 텍스트 처리 함수
+function wrapTextForVideo(text, maxLength = 25) {
+  if (!text) return text;
+
+  // HTML 태그를 줄바꿈으로 변환
+  const tempText = text.replace(/<br\s*\/?>/gi, "\n").replace(/<br>/gi, "\n");
+
+  if (tempText.length <= maxLength) {
+    return tempText; // 영상에서는 나중에 FFmpeg에서 \\n으로 변환
+  }
+
+  const words = tempText.split(" ");
+  const lines = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    if ((currentLine + word).length <= maxLength) {
+      currentLine += (currentLine ? " " : "") + word;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  }
+  if (currentLine) lines.push(currentLine);
+
+  return lines.join("\n"); // 영상에서는 나중에 FFmpeg에서 \\n으로 변환
 }
 
 /** 이름 있는 export (중요) */
@@ -91,12 +118,21 @@ export async function buildFinalMP4(story, audioList) {
 
     // 0) 폰트 적재 (실패해도 진행)
     let hasFont = true;
+    let hasEmojiFont = true;
     try {
       const fontBlob = await fetchAsBlob(FONT_PUBLIC_PATH);
       await writeFile(ff, "NotoSansKR-Bold.ttf", fontBlob);
     } catch (e) {
-      console.warn("[finalize] 폰트 로드 실패, 텍스트 없이 진행:", e.message);
+      console.warn("[finalize] 한국어 폰트 로드 실패:", e.message);
       hasFont = false;
+    }
+
+    try {
+      const emojiFontBlob = await fetchAsBlob(EMOJI_FONT_PUBLIC_PATH);
+      await writeFile(ff, "NotoColorEmoji.ttf", emojiFontBlob);
+    } catch (e) {
+      console.warn("[finalize] 이모지 폰트 로드 실패:", e.message);
+      hasEmojiFont = false;
     }
 
     // 1) 오디오 맵
@@ -122,8 +158,8 @@ export async function buildFinalMP4(story, audioList) {
         isEmpty: !raw,
       });
       const safeText = raw
-        .replace(/<br\s*\/?>/gi, "\\n") // <br> 태그를 FFmpeg 줄바꿈으로 변환
-        .replace(/<br>/gi, "\\n") // <br> 태그를 FFmpeg 줄바꿈으로 변환
+        .replace(/<br\s*\/?>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
+        .replace(/<br>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
         .replace(/<[^>]*>/g, "") // 모든 HTML 태그 제거
         .replace(/\\/g, "\\\\")
         .replace(/:/g, "\\:");
@@ -163,8 +199,8 @@ export async function buildFinalMP4(story, audioList) {
       // 텍스트가 비어있으면 drawtext 필터 사용하지 않음
       const fontSize = s.fontSize || 36; // 씬별 폰트 크기 설정 가능
 
-      // 긴 텍스트를 자동으로 줄바꿈 처리 (원본 텍스트 사용)
-      const wrappedText = wrapText(raw);
+      // 긴 텍스트를 자동으로 줄바꿈 처리 (영상용)
+      const wrappedText = wrapTextForVideo(raw);
 
       // 세로 위치 계산 (10% = 위쪽, 50% = 중앙, 90% = 아래쪽)
       const textPosition = s.textPosition || 50;
@@ -185,9 +221,15 @@ export async function buildFinalMP4(story, audioList) {
 
       const boxColor = hexToRgba(bgColor, bgAlpha);
 
+      // 폰트 스택 구성 (한국어 폰트 우선, 이모지 폰트 보조)
+      const fontStack = [];
+      if (hasFont) fontStack.push("NotoSansKR-Bold.ttf");
+      if (hasEmojiFont) fontStack.push("NotoColorEmoji.ttf");
+      const fontFile = fontStack.join("|");
+
       const drawtext = safeText
-        ? `drawtext=fontfile=NotoSansKR-Bold.ttf:` +
-          `text='${wrappedText.replace(/'/g, "\\'")}':fontcolor=${s.textColor || "#ffffff"}:` +
+        ? `drawtext=fontfile=${fontFile}:` +
+          `text='${wrappedText.replace(/'/g, "\\'").replace(/\n/g, "\\n")}':fontcolor=${s.textColor || "#ffffff"}:` +
           `fontsize=${fontSize}:x=(w-text_w)/2:y=${yPosition}:` +
           `box=1:boxcolor=${boxColor}:boxborderw=24:line_spacing=10`
         : null;
@@ -443,6 +485,7 @@ async function cleanupFFmpegFiles(ff) {
     "list.txt",
     "concat_tmp.mp4",
     "NotoSansKR-Bold.ttf",
+    "NotoColorEmoji.ttf",
     "_selftest.mp4",
   ];
 
