@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "쇼츠공장 · 자동 생성기",
+  title: "Shorts Factory",
   description: "AI로 쇼츠 영상을 자동 생성하는 도구",
 };
 
