@@ -62,8 +62,11 @@ export async function getFFmpeg() {
 
     try {
       // 기본 로딩 시도
+      console.log("[ff] FFmpeg 기본 로딩 시작...");
       await ffmpeg.load();
+      console.log("[ff] FFmpeg 기본 로딩 성공");
     } catch (e1) {
+      console.warn("[ff] FFmpeg 기본 로딩 실패, CDN 시도:", e1.message);
       // 수동 CDN 시도
       const CDN_OPTIONS = [
         "https://unpkg.com/@ffmpeg/core@0.12.10/dist/umd",
@@ -77,24 +80,29 @@ export async function getFFmpeg() {
 
       for (let i = 0; i < CDN_OPTIONS.length; i++) {
         const BASE = CDN_OPTIONS[i];
+        console.log(`[ff] CDN 시도 ${i + 1}/${CDN_OPTIONS.length}: ${BASE}`);
 
         try {
           await ffmpeg.load({
             coreURL: `${BASE}/ffmpeg-core.js`,
             wasmURL: `${BASE}/ffmpeg-core.wasm`,
           });
+          console.log(`[ff] CDN 로딩 성공: ${BASE}`);
           loadSuccess = true;
           break;
         } catch (e2) {
+          console.warn(`[ff] CDN 로딩 실패 (옵션 1): ${BASE}`, e2.message);
           try {
             await ffmpeg.load({
               coreURL: `${BASE}/ffmpeg-core.js`,
               wasmURL: `${BASE}/ffmpeg-core.wasm`,
               workerURL: `${BASE}/ffmpeg-core.worker.js`,
             });
+            console.log(`[ff] CDN 로딩 성공 (옵션 2): ${BASE}`);
             loadSuccess = true;
             break;
           } catch (e3) {
+            console.warn(`[ff] CDN 로딩 실패 (옵션 2): ${BASE}`, e3.message);
             lastError = e3;
           }
         }

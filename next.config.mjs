@@ -9,12 +9,14 @@ const nextConfig = {
   },
   // SharedArrayBuffer를 위한 조건부 헤더 설정
   async headers() {
-    // 개발 환경에서는 COEP 헤더를 적용하지 않음 (외부 비디오 접근을 위해)
-    if (process.env.NODE_ENV === "development") {
+    // 환경 변수로 COEP 헤더 제어 가능
+    const enableCOEP = process.env.ENABLE_COEP === "true";
+
+    if (!enableCOEP) {
       return [];
     }
 
-    // 프로덕션 환경에서만 COEP 헤더 적용
+    // COEP 헤더 적용 (SharedArrayBuffer 활성화)
     return [
       {
         source: "/(.*)",

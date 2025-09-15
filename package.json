@@ -5,8 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:https": "next dev --experimental-https",
+    "dev:coep": "ENABLE_COEP=true next dev",
+    "dev:https:coep": "ENABLE_COEP=true next dev --experimental-https",
     "build": "next build",
+    "build:coep": "ENABLE_COEP=true next build",
     "start": "next start",
+    "start:coep": "ENABLE_COEP=true next start",
     "lint": "eslint",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
