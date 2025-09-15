@@ -9,6 +9,10 @@ import {
   Tabs as MuiTabs,
   Chip,
   Grid2,
+  ThemeProvider,
+  createTheme,
+  Button,
+  IconButton,
 } from "@mui/material";
 import {
   SmartToy,
@@ -16,6 +20,10 @@ import {
   AudioFile,
   Settings,
   Download,
+  Visibility,
+  List,
+  ChevronRight,
+  ChevronLeft,
 } from "@mui/icons-material";
 import PromptGenerator from "./components/PromptGenerator";
 import StoryInfo from "./components/StoryInfo";
@@ -27,6 +35,92 @@ import { calculateDurationFromText } from "./lib/finalize";
 
 const FIXED_KEY = "shortsfactory.fixedPrompt";
 
+// Vercel 스타일 다크 테마 생성
+const theme = createTheme({
+  typography: {
+    fontFamily:
+      "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif",
+  },
+  palette: {
+    mode: "dark",
+    primary: {
+      main: "#0070F3", // Vercel 블루
+      light: "#3291FF",
+      dark: "#0051CC",
+    },
+    secondary: {
+      main: "#FF6B6B", // 밝은 빨간색
+      light: "#FF8E8E",
+      dark: "#E55555",
+    },
+    background: {
+      default: "#111111", // 진한 검은색
+      paper: "#1a1a1a", // 약간 밝은 검은색
+    },
+    text: {
+      primary: "#ffffff", // 흰색 텍스트
+      secondary: "#a0a0a0", // 회색 텍스트
+    },
+    divider: "#333333", // 구분선 색상
+    success: {
+      main: "#00D4AA", // 밝은 청록색
+    },
+    warning: {
+      main: "#F5A623", // 주황색
+    },
+    info: {
+      main: "#0070F3", // Vercel 블루
+    },
+  },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#1a1a1a",
+          border: "1px solid #333333",
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        contained: {
+          backgroundColor: "#0070F3",
+          color: "#ffffff",
+          "&:hover": {
+            backgroundColor: "#0051CC",
+          },
+        },
+        outlined: {
+          borderColor: "#333333",
+          color: "#ffffff",
+          "&:hover": {
+            borderColor: "#0070F3",
+            backgroundColor: "rgba(0, 112, 243, 0.1)",
+          },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          color: "#a0a0a0",
+          "&.Mui-selected": {
+            color: "#0070F3",
+          },
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          backgroundColor: "#333333",
+          color: "#ffffff",
+        },
+      },
+    },
+  },
+});
+
 export default function Home() {
   const [fixedPrompt, setFixedPrompt] = useState("");
   const [variablePrompt, setVariablePrompt] = useState("");
@@ -34,6 +128,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
+  const [previewTab, setPreviewTab] = useState(0);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(true);
 
   // load/save fixed prompt
   useEffect(() => {
@@ -129,7 +225,9 @@ export default function Home() {
           />
         );
       case 3:
-        return <AudioManager result={result} />;
+        return (
+          <AudioManager result={result} onStoryChange={handleStoryChange} />
+        );
       case 4:
         return (
           <VideoComposer
@@ -154,160 +252,259 @@ export default function Home() {
   };
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        width: "100%",
-      }}
-    >
+    <ThemeProvider theme={theme}>
       <Box
         sx={{
+          display: "flex",
+          flexDirection: "row",
+          justifyContent: "center",
+          alignItems: "center",
           width: "100%",
-          height: "100vh",
+          minHeight: "100vh",
+          backgroundColor: "#111111",
         }}
       >
         <Box
-          xs={12}
-          lg={8}
-          sx={{ display: "flex", flexDirection: "column", height: "100%" }}
-        >
-          <Paper
-            elevation={0}
-            sx={{
-              borderRadius: 0,
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            {/* 헤더 */}
-            <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography variant="h5" component="h1" fontWeight={800}>
-                  🎬 쇼츠공장 · 자동 생성기
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* 탭 네비게이션 */}
-            <MuiTabs
-              value={activeTab}
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              variant="scrollable"
-              scrollButtons="auto"
-              sx={{
-                minHeight: "64px",
-                "& .MuiTab-root": {
-                  minHeight: "64px",
-                  height: "64px",
-                  padding: "12px 16px",
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                },
-                "& .MuiTab-root .MuiTab-iconWrapper": {
-                  marginRight: "8px",
-                },
-              }}
-            >
-              <Tab
-                label="① 프롬프트/생성"
-                icon={<SmartToy />}
-                iconPosition="start"
-              />
-              <Tab label="② 씬 편집" icon={<Settings />} iconPosition="start" />
-              <Tab
-                label="③ B-roll 선택"
-                icon={<VideoFile />}
-                iconPosition="start"
-              />
-              <Tab
-                label="④ 오디오(TTS)"
-                icon={<AudioFile />}
-                iconPosition="start"
-              />
-              <Tab
-                label="⑤ 합성/다운로드"
-                icon={<Download />}
-                iconPosition="start"
-              />
-            </MuiTabs>
-
-            {/* 탭 컨텐츠 */}
-            <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
-              {renderTabContent()}
-            </Box>
-          </Paper>
-        </Box>
-      </Box>
-      <Box
-        sx={{
-          width: "30%",
-          height: "100vh",
-        }}
-      >
-        <Paper
-          elevation={2}
           sx={{
-            height: "100%",
-            borderRadius: 0,
-            borderLeft: 1,
-            borderColor: "divider",
-            display: "flex",
-            flexDirection: "column",
+            width: "100%",
+            height: "100vh",
           }}
         >
-          <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-            <Typography variant="h6">📱 프리뷰</Typography>
-          </Box>
           <Box
+            xs={12}
+            lg={8}
             sx={{
-              p: 2,
-              flexGrow: 1,
               display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
+              flexDirection: "column",
+              height: "100%",
+              width: "100%",
+              transition: "width 0.3s ease",
             }}
           >
-            {result ? (
-              <PreviewPlayer story={result} />
-            ) : (
-              <Paper
-                variant="outlined"
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 0,
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                backgroundColor: "#1a1a1a",
+                border: "1px solid #333333",
+              }}
+            >
+              {/* 헤더 */}
+              <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: "20px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    Shorts Factory
+                  </Typography>
+
+                  {/* 프리뷰 토글 버튼 */}
+                  <IconButton
+                    onClick={() => setIsPreviewOpen(!isPreviewOpen)}
+                    sx={{
+                      color: "white",
+                      width: "36px",
+                      height: "36px",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+                    }}
+                  >
+                    {isPreviewOpen ? (
+                      <ChevronRight fontSize="small" />
+                    ) : (
+                      <ChevronLeft fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              </Box>
+
+              {/* 탭 네비게이션 */}
+              <MuiTabs
+                value={activeTab}
+                onChange={(e, newValue) => setActiveTab(newValue)}
+                variant="scrollable"
+                scrollButtons="auto"
                 sx={{
-                  width: "100%",
-                  maxWidth: 360,
-                  height: 600,
-                  borderRadius: 4,
-                  borderStyle: "dashed",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  p: 3,
+                  minHeight: "64px",
+                  "& .MuiTab-root": {
+                    minHeight: "64px",
+                    height: "64px",
+                    padding: "12px 16px",
+                    fontSize: "15px !important",
+                    fontWeight: "600 !important",
+                  },
+                  "& .MuiTab-root .MuiTab-iconWrapper": {
+                    marginRight: "8px",
+                  },
+                  "& .MuiTab-root .MuiTab-label": {
+                    fontSize: "15px !important",
+                    fontWeight: "600 !important",
+                  },
                 }}
               >
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  textAlign="center"
-                >
-                  스토리보드를 생성하면
-                  <br />
-                  여기서 미리볼 수 있어요.
-                </Typography>
-              </Paper>
-            )}
+                <Tab label="1. 프롬프트/생성" />
+                <Tab label="2. 씬 편집" />
+                <Tab label="3. B-roll 선택" />
+                <Tab label="4. 오디오(TTS) 생성" />
+                <Tab label="5. 합성/다운로드" />
+              </MuiTabs>
+
+              {/* 탭 컨텐츠 */}
+              <Box sx={{ flexGrow: 1, overflow: "hidden" }}>
+                {renderTabContent()}
+              </Box>
+            </Paper>
           </Box>
-        </Paper>
+        </Box>
+        {isPreviewOpen && (
+          <Box
+            sx={{
+              width: "100%",
+              maxWidth: 400,
+              height: "100vh",
+            }}
+          >
+            <Paper
+              elevation={0}
+              sx={{
+                height: "100%",
+                borderRadius: 0,
+                borderLeft: 1,
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                backgroundColor: "#1a1a1a",
+                border: "1px solid #333333",
+              }}
+            >
+              {/* 우측 탭 네비게이션 */}
+              <MuiTabs
+                value={previewTab}
+                onChange={(e, newValue) => setPreviewTab(newValue)}
+                variant="fullWidth"
+                sx={{
+                  minHeight: "48px",
+                  "& .MuiTab-root": {
+                    minHeight: "48px",
+                    height: "48px",
+                    fontSize: "15px !important",
+                    fontWeight: "600 !important",
+                  },
+                  "& .MuiTab-root .MuiTab-label": {
+                    fontSize: "15px !important",
+                    fontWeight: "600 !important",
+                  },
+                }}
+              >
+                <Tab
+                  label="프리뷰"
+                  icon={<Visibility />}
+                  iconPosition="start"
+                />
+                <Tab label="스토리보드" icon={<List />} iconPosition="start" />
+              </MuiTabs>
+
+              {/* 탭 컨텐츠 */}
+              <Box
+                sx={{
+                  p: 2,
+                  flexGrow: 1,
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                {previewTab === 0 ? (
+                  // 프리뷰 탭
+                  result ? (
+                    <PreviewPlayer story={result} />
+                  ) : (
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        width: "100%",
+                        maxWidth: 360,
+                        height: 600,
+                        borderRadius: 4,
+                        borderStyle: "dashed",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        p: 3,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        textAlign="center"
+                      >
+                        스토리보드를 생성하면
+                        <br />
+                        여기서 미리볼 수 있어요.
+                      </Typography>
+                    </Paper>
+                  )
+                ) : // 스토리보드 탭
+                result ? (
+                  <Box sx={{ width: "100%", height: "100%", overflow: "auto" }}>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 2,
+                        bgcolor: "#0a0a0a",
+                        color: "#00ff00",
+                        fontFamily: "monospace",
+                        fontSize: "0.8rem",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {JSON.stringify(result, null, 2)}
+                    </Paper>
+                  </Box>
+                ) : (
+                  <Paper
+                    variant="outlined"
+                    sx={{
+                      width: "100%",
+                      maxWidth: 360,
+                      height: 600,
+                      borderRadius: 4,
+                      borderStyle: "dashed",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      p: 3,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      textAlign="center"
+                    >
+                      스토리보드를 생성하면
+                      <br />
+                      여기서 JSON을 볼 수 있어요.
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
+            </Paper>
+          </Box>
+        )}
       </Box>
-    </Box>
+    </ThemeProvider>
   );
 }

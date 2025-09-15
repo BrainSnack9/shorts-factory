@@ -30,9 +30,14 @@ export function calculateDurationFromText(text) {
 
 // 긴 텍스트를 자동으로 줄바꿈 처리하는 함수 (프리뷰와 합성에서 공통 사용)
 export function wrapText(text, maxLength = 25) {
-  if (!text || text.length <= maxLength) return text;
+  if (!text) return text;
 
-  const words = text.split(" ");
+  // HTML 태그를 임시로 보존하면서 텍스트 길이 계산
+  const tempText = text.replace(/<br\s*\/?>/gi, "\n").replace(/<br>/gi, "\n");
+
+  if (tempText.length <= maxLength) return text;
+
+  const words = tempText.split(" ");
   const lines = [];
   let currentLine = "";
 
@@ -111,6 +116,9 @@ export async function buildFinalMP4(story, audioList) {
         isEmpty: !raw,
       });
       const safeText = raw
+        .replace(/<br\s*\/?>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
+        .replace(/<br>/gi, "\n") // <br> 태그를 줄바꿈으로 변환
+        .replace(/<[^>]*>/g, "") // 모든 HTML 태그 제거
         .replace(/\\/g, "\\\\")
         .replace(/:/g, "\\:")
         .replace(/'/g, "\\'");
@@ -153,11 +161,26 @@ export async function buildFinalMP4(story, audioList) {
       const textPosition = s.textPosition || 50;
       const yPosition = `(h*${textPosition}/100-text_h/2)`;
 
+      // 배경색과 알파값 처리
+      const bgColor = s.bgColor || "#000000";
+      const bgAlpha = s.bgAlpha || 0.47; // 기본 알파값 0.47 (77/255)
+
+      // 16진수 색상을 RGBA로 변환
+      const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const a = Math.round(alpha * 255);
+        return `0x${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}${a.toString(16).padStart(2, "0")}`;
+      };
+
+      const boxColor = hexToRgba(bgColor, bgAlpha);
+
       const drawtext = safeText
         ? `drawtext=fontfile=NotoSansKR-Bold.ttf:` +
           `text='${wrappedText}':fontcolor=${s.textColor || "#ffffff"}:` +
           `fontsize=${fontSize}:x=(w-text_w)/2:y=${yPosition}:` +
-          `box=1:boxcolor=0x00000077:boxborderw=24:line_spacing=10`
+          `box=1:boxcolor=${boxColor}:boxborderw=24:line_spacing=10`
         : null;
 
       try {

@@ -1,10 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import {
-  Card,
-  CardContent,
-  TextField,
-  Typography,
   Box,
   Chip,
   Slider,
@@ -18,8 +14,16 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Typography,
 } from "@mui/material";
-import { Edit, Delete, Warning, Refresh } from "@mui/icons-material";
+import { CommonCard, CommonTextField, CommonTypography } from "./common";
+import {
+  Edit,
+  Delete,
+  Warning,
+  KeyboardArrowUp,
+  KeyboardArrowDown,
+} from "@mui/icons-material";
 import { calculateDurationFromText } from "../lib/finalize";
 
 export default function StoryboardEditor({ story, onChange }) {
@@ -27,26 +31,12 @@ export default function StoryboardEditor({ story, onChange }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [sceneToDelete, setSceneToDelete] = useState(null);
 
-  // 스토리 변경 시 로컬 상태 업데이트 및 ID 정리
+  // 스토리 변경 시 로컬 상태 업데이트
   useEffect(() => {
     if (story) {
-      const normalizedStory = normalizeSceneIds(story);
-      setLocal(normalizedStory);
+      setLocal(story);
     }
   }, [story]);
-
-  // 씬 ID 정규화 함수
-  const normalizeSceneIds = (storyData) => {
-    if (!storyData?.scenes) return storyData;
-
-    return {
-      ...storyData,
-      scenes: storyData.scenes.map((scene, index) => ({
-        ...scene,
-        id: `s${index + 1}`, // 순서대로 ID 재정렬
-      })),
-    };
-  };
 
   const updateScene = (idx, patch) => {
     const next = {
@@ -94,22 +84,14 @@ export default function StoryboardEditor({ story, onChange }) {
     if (sceneToDelete !== null) {
       const filteredScenes = local.scenes.filter((_, i) => i !== sceneToDelete);
 
-      // 씬 ID를 순서대로 재정렬 (s1, s2, s3...)
-      const reorderedScenes = filteredScenes.map((scene, index) => ({
-        ...scene,
-        id: `s${index + 1}`, // ID 재정렬
-        // B-roll과 오디오 참조도 새 ID로 업데이트될 수 있도록 초기화하지 않음
-      }));
-
       const next = {
         ...local,
-        scenes: reorderedScenes,
+        scenes: filteredScenes,
       };
 
-      console.log("[StoryboardEditor] 씬 삭제 후 재정렬:", {
+      console.log("[StoryboardEditor] 씬 삭제:", {
         before: local.scenes.length,
-        after: reorderedScenes.length,
-        newIds: reorderedScenes.map((s) => s.id),
+        after: filteredScenes.length,
       });
 
       setLocal(next);
@@ -119,61 +101,129 @@ export default function StoryboardEditor({ story, onChange }) {
     setSceneToDelete(null);
   };
 
-  // 수동으로 씬 ID 재정렬 및 데이터 정리
-  const handleRefreshScenes = () => {
-    const normalized = normalizeSceneIds(local);
-    console.log("[StoryboardEditor] 수동 정렬 실행:", {
-      before: local.scenes.map((s) => s.id),
-      after: normalized.scenes.map((s) => s.id),
+  // 씬 순서 변경 함수들
+  const moveSceneUp = (index) => {
+    if (index === 0) return; // 첫 번째 씬은 위로 이동 불가
+
+    const newScenes = [...local.scenes];
+    [newScenes[index - 1], newScenes[index]] = [
+      newScenes[index],
+      newScenes[index - 1],
+    ];
+
+    const next = {
+      ...local,
+      scenes: newScenes,
+    };
+
+    console.log("[StoryboardEditor] 씬 위로 이동:", {
+      from: index,
+      to: index - 1,
+      sceneId: newScenes[index - 1].id,
     });
-    setLocal(normalized);
-    onChange?.(normalized);
+
+    setLocal(next);
+    onChange?.(next);
+  };
+
+  const moveSceneDown = (index) => {
+    if (index === local.scenes.length - 1) return; // 마지막 씬은 아래로 이동 불가
+
+    const newScenes = [...local.scenes];
+    [newScenes[index], newScenes[index + 1]] = [
+      newScenes[index + 1],
+      newScenes[index],
+    ];
+
+    const next = {
+      ...local,
+      scenes: newScenes,
+    };
+
+    console.log("[StoryboardEditor] 씬 아래로 이동:", {
+      from: index,
+      to: index + 1,
+      sceneId: newScenes[index + 1].id,
+    });
+
+    setLocal(next);
+    onChange?.(next);
   };
 
   if (!local || !Array.isArray(local.scenes)) return null;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* 씬 정렬 버튼 */}
-      <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<Refresh />}
-          onClick={handleRefreshScenes}
-          sx={{ fontSize: "0.8rem" }}
-        >
-          씬 ID 재정렬
-        </Button>
-      </Box>
-
       {local.scenes.map((s, i) => (
-        <Card key={s.id || i} variant="outlined">
-          <CardContent
-            sx={{
+        <CommonCard
+          key={s.id || i}
+          sx={{
+            "& .MuiCardContent-root": {
               display: "flex",
               flexDirection: "column",
               gap: 3,
+              padding: 3,
+            },
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
             }}
           >
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                mb: 2,
-              }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Edit fontSize="small" />
-                <Typography variant="h6">씬 #{i + 1}</Typography>
-                <Chip
-                  label={`${(s.durationSec || 3).toFixed(1)}초`}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-              </Box>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Edit fontSize="small" />
+              <CommonTypography variant="h5">씬 #{i + 1}</CommonTypography>
+              <Chip
+                label={`${(s.durationSec || 3).toFixed(1)}초`}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              {/* 씬 순서 변경 버튼들 */}
+              <IconButton
+                size="small"
+                onClick={() => moveSceneUp(i)}
+                disabled={i === 0}
+                title="위로 이동"
+                sx={{
+                  color: i === 0 ? "text.disabled" : "text.secondary",
+                  "&:hover": {
+                    backgroundColor: i === 0 ? "transparent" : "action.hover",
+                  },
+                }}
+              >
+                <KeyboardArrowUp fontSize="small" />
+              </IconButton>
+
+              <IconButton
+                size="small"
+                onClick={() => moveSceneDown(i)}
+                disabled={i === local.scenes.length - 1}
+                title="아래로 이동"
+                sx={{
+                  color:
+                    i === local.scenes.length - 1
+                      ? "text.disabled"
+                      : "text.secondary",
+                  "&:hover": {
+                    backgroundColor:
+                      i === local.scenes.length - 1
+                        ? "transparent"
+                        : "action.hover",
+                  },
+                }}
+              >
+                <KeyboardArrowDown fontSize="small" />
+              </IconButton>
+
+              {/* 씬 삭제 버튼 */}
               <IconButton
                 size="small"
                 color="error"
@@ -188,59 +238,92 @@ export default function StoryboardEditor({ story, onChange }) {
                 <Delete fontSize="small" />
               </IconButton>
             </Box>
+          </Box>
 
-            <TextField
-              fullWidth
-              label="자막/텍스트"
-              multiline
-              rows={2}
-              value={s.onScreenText ?? s.text ?? ""}
-              onChange={(e) => updateScene(i, { onScreenText: e.target.value })}
-              variant="outlined"
-            />
-            <TextField
-              fullWidth
-              label="나레이션"
-              multiline
-              rows={2}
-              value={s.voiceover || ""}
-              onChange={(e) => updateScene(i, { voiceover: e.target.value })}
-              variant="outlined"
-              helperText="나레이션 텍스트를 입력하면 길이가 자동으로 계산됩니다 (분당 220자 기준)"
-            />
-            <TextField
-              fullWidth
-              label="B-roll 프롬프트 (영문 키워드)"
-              value={s.brollPrompt || ""}
-              onChange={(e) => updateScene(i, { brollPrompt: e.target.value })}
-              placeholder='예) "yawning office worker closeup"'
-              variant="outlined"
-            />
+          <CommonTextField
+            fullWidth
+            label="자막/텍스트"
+            multiline
+            rows={2}
+            value={s.onScreenText ?? s.text ?? ""}
+            onChange={(e) => updateScene(i, { onScreenText: e.target.value })}
+          />
+          <CommonTextField
+            fullWidth
+            label="나레이션"
+            multiline
+            rows={2}
+            value={s.voiceover || ""}
+            onChange={(e) => updateScene(i, { voiceover: e.target.value })}
+            helperText="나레이션 텍스트를 입력하면 길이가 자동으로 계산됩니다 (분당 220자 기준)"
+          />
+          <CommonTextField
+            fullWidth
+            label="B-roll 프롬프트 (영문 키워드)"
+            value={s.brollPrompt || ""}
+            onChange={(e) => updateScene(i, { brollPrompt: e.target.value })}
+            placeholder='예) "yawning office worker closeup"'
+          />
 
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "row",
-                gap: 2,
-              }}
+          {/* 기본 색상 설정 - 한 줄에 배치 */}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "row",
+              gap: 2,
+              alignItems: "center",
+            }}
+          >
+            <CommonTextField
+              label="배경색"
+              type="color"
+              value={s.bgColor || "#0d0d0d"}
+              onChange={(e) => updateScene(i, { bgColor: e.target.value })}
+              sx={{ flex: 1 }}
+            />
+            <CommonTextField
+              label="텍스트색"
+              type="color"
+              value={s.textColor || "#ffffff"}
+              onChange={(e) => updateScene(i, { textColor: e.target.value })}
+              sx={{ flex: 1 }}
+            />
+            <FormControl sx={{ flex: 1 }}>
+              <InputLabel shrink>배경 투명도</InputLabel>
+              <Box sx={{ px: 1, pt: 3 }}>
+                <Slider
+                  value={s.bgAlpha || 0.47}
+                  onChange={(e, value) => updateScene(i, { bgAlpha: value })}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  marks={[
+                    { value: 0, label: "투명" },
+                    { value: 0.5, label: "50%" },
+                    { value: 1, label: "불투명" },
+                  ]}
+                  valueLabelDisplay="on"
+                  valueLabelFormat={(value) => `${Math.round(value * 100)}%`}
+                />
+              </Box>
+            </FormControl>
+          </Box>
+
+          {/* 자막 옵션 섹션 */}
+          <Box
+            sx={{
+              borderTop: "1px solid",
+              borderColor: "divider",
+              pt: 2,
+              mt: 2,
+            }}
+          >
+            <CommonTypography
+              variant="h6"
+              sx={{ mb: 2, color: "text.secondary" }}
             >
-              <TextField
-                fullWidth
-                label="배경색"
-                type="color"
-                value={s.bgColor || "#0d0d0d"}
-                onChange={(e) => updateScene(i, { bgColor: e.target.value })}
-                variant="outlined"
-              />
-              <TextField
-                fullWidth
-                label="텍스트색"
-                type="color"
-                value={s.textColor || "#ffffff"}
-                onChange={(e) => updateScene(i, { textColor: e.target.value })}
-                variant="outlined"
-              />
-            </Box>
+              자막 옵션
+            </CommonTypography>
 
             <Box
               sx={{
@@ -332,8 +415,8 @@ export default function StoryboardEditor({ story, onChange }) {
                 </Box>
               </FormControl>
             </Box>
-          </CardContent>
-        </Card>
+          </Box>
+        </CommonCard>
       ))}
 
       {/* 삭제 확인 다이얼로그 */}

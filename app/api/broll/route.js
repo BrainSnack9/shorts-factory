@@ -3,10 +3,22 @@ export const runtime = "nodejs";
 async function searchPexelsVideos(query) {
   const key = process.env.PEXELS_API_KEY;
   if (!key) throw new Error("Missing PEXELS_API_KEY");
+
+  // 다양성을 위한 랜덤 요소들
+  const randomPage = Math.floor(Math.random() * 3) + 1; // 1-3 페이지 중 랜덤
+  const randomKeywords = ["closeup", "action", "emotion", "movement", "detail"];
+  const randomKeyword =
+    randomKeywords[Math.floor(Math.random() * randomKeywords.length)];
+
+  // 쿼리에 랜덤 키워드 추가 (50% 확률)
+  const enhancedQuery =
+    Math.random() > 0.5 ? `${query} ${randomKeyword}` : query;
+
   const url = new URL("https://api.pexels.com/videos/search");
-  url.searchParams.set("query", query);
-  url.searchParams.set("per_page", "3"); // 상위 3개만
+  url.searchParams.set("query", enhancedQuery);
+  url.searchParams.set("per_page", "5"); // 상위 5개
   url.searchParams.set("orientation", "portrait"); // 세로 비디오 우선
+  url.searchParams.set("page", randomPage.toString()); // 랜덤 페이지
 
   const res = await fetch(url, { headers: { Authorization: key } });
   if (!res.ok) {
@@ -14,8 +26,12 @@ async function searchPexelsVideos(query) {
     throw new Error(`Pexels failed: ${res.status} ${msg}`);
   }
   const json = await res.json();
+
+  // 결과를 셔플하여 다양성 증가
+  const videos = (json.videos || []).sort(() => Math.random() - 0.5);
+
   // 가장 짧고 세로 비율에 가까운 파일 우선 선택
-  return (json.videos || [])
+  return videos
     .map((v) => {
       const file =
         (v.video_files || [])

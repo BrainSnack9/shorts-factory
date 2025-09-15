@@ -27,7 +27,13 @@ export default function StoryInfo({ result, onChange }) {
 
   return (
     <Box sx={{ p: 3, height: "100%", overflow: "auto" }}>
-      <Card sx={{ mb: 3 }}>
+      <Card
+        sx={{
+          mb: 3,
+          backgroundColor: "#0a0a0a",
+          border: "1px solid #2a2a2a",
+        }}
+      >
         <CardContent>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <Box>
@@ -75,19 +81,6 @@ export default function StoryInfo({ result, onChange }) {
                     />
                   ))}
               </Box>
-            </Box>
-
-            <Box>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontSize: "0.75rem", mb: 0.5 }}
-              >
-                TTS 톤
-              </Typography>
-              <Typography variant="body2" sx={{ fontSize: "0.875rem" }}>
-                {result.ttsVoice}
-              </Typography>
             </Box>
 
             <Box>
